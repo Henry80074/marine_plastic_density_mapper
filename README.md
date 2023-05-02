@@ -70,7 +70,10 @@ To conduct analysis and visualisation. <br>
 &emsp; cd /analysis  <br>
 &emsp; run python analysis.py
 
-analysis is a work in progress, filtering of detections is possible by removing detections from areas of ocean that are 
+analysis is a work in progress, filtering of detections is possible by removing detections from areas that are close to land, shallow or known harbours and anchorage points, where false positives may be likely.
+bathymetry data can be found here: https://www.gebco.net/data_and_products/gridded_bathymetry_data/ and is currently a work in progress.
+
+
 
 <h2> Weather API </h2>
 To filter Sentinel-2 data by wind speed, access to the visual crossing weather api is required.
