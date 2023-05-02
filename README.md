@@ -14,7 +14,7 @@
 <p>-&emsp;Masking – Clouds and cloud shadows are masked using F-mask. Land is also masked.</p>
 <p>-&emsp;Data visualisation - The pixel coordinates of plastic pixels were extracted and converted to coordinate reference system points, consisting of a longitude and latitude. These are plotted on a map and a hexagonal heat map is generated using Plotly. Detected plastic pixels are saved to a CSV file.</p>
 
-<p> Please note, this install guide is for linux. This program can be made to run on Windows but it is likely that some small code changes will be needed to get it working.</p>
+<p> Please note, this install guide is for linux. This program may run on Windows but it has not been extensively tested</p>
 <h2> Setting up </h2>
 
 1. Download acolite source code from  https://github.com/acolite/acolite and place acolite-main in the root directory <br><br>
@@ -44,7 +44,7 @@ Then run the commands: <br> <br>
 &emsp; pip install /home/<user>/Downloads/GDAL-3.4.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl <br>
 &emsp; pip install gdal-utils <br>
 
-Finally, you must specify where the proj.db file is. If using anaconda this is likely to be in th share folder of the MAP-Mapper environment. <br>
+Finally, you must specify where the proj.db file is. If using anaconda this is likely to be in the share folder of the MAP-Mapper environment. <br>
 Navigate to run.py and change the environment variable to match this path. <br><br>
 For example: <br>
 &emsp; os.environ['PROJ_LIB'] = '/home/user/anaconda3/envs/map-mapper/share/proj'
@@ -54,7 +54,7 @@ To run the full pipeline, with cloud and land masking, navigate to the project r
 	python   run.py   full   -start_date *   -end_date *   -cloud_mask   -land_mask
 where * is a valid date of the format YYYYMMdd 
 
-To specify a cloud percentage add: <br><br>
+To specify a max cloud percentage add: <br><br>
 &emsp; -cloud_percentage * <br><br>
 where * is a integer value between 0 and 100
 The default cloud percentage is 20
@@ -69,6 +69,8 @@ To identify the tile you require, Sentinel Hub can be useful. This is available 
 To conduct analysis and visualisation. <br>
 &emsp; cd /analysis  <br>
 &emsp; run python analysis.py
+
+analysis is a work in progress, filtering of detections is possible by removing detections from areas of ocean that are 
 
 <h2> Weather API </h2>
 To filter Sentinel-2 data by wind speed, access to the visual crossing weather api is required.

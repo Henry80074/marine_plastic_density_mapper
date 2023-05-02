@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(base_path, "acolite_api"))
 sys.path.insert(0, os.path.join(base_path, "semantic_segmentation"))
 sys.path.insert(0, os.path.join(base_path, "sentinel_downloader"))
 sys.path.insert(0, os.path.join(base_path, "smooth_patches"))
-from analysis import save_coordinates_to_csv2
+from analysis import save_coordinates_to_csv
 from data_filters import get_fmask_percentage
 import argparse
 from sentinelsat import read_geojson
@@ -31,6 +31,8 @@ load_dotenv()
 os.environ['PROJ_LIB'] = '/home/henry/anaconda3/envs/mapper/share/proj'
 os.environ['PROJ_DEBUG'] = "3"
 
+# set threshold (only pixels that the model predicts as having >99% chance of being plastic are classified as plastic
+threshold = 0.99
 # code for command line interface
 if __name__ == "__main__":
 
@@ -274,80 +276,9 @@ if __name__ == "__main__":
 
             bundles = os.listdir(os.path.join(base_path, "data", "downloads"))
             print(bundles)
-            large_area = True
-            if not large_area:
-                # if any data to process, run pipeline
-                if bundles:
-                    # set tile_id and date
-                    tile_id = bundles[0].split("_")[-2]
-                    print(tile_id)
-                    date = bundles[0].split("_")[2][:8]
-                    print(date)
-                    # run acolite with multiprocessing
-                    if __name__ == '__main__':
-                        with Pool(len(bundles)) as p:
-                            print(p.map(run_acolite, bundles))
-                    print("processing files........")
-                    image_engineer = ImageEngineer(id=tile_id, date=date, land_mask=args.land_mask, cloud_mask=args.cloud_mask)
-
-                    # get crs of SAFE file
-                    image_engineer.crs = get_crs()
-
-                    # load processed acolite rhos images (assigns file path to self.tiff_files)
-                    image_engineer.load_images()
-
-                    # combines processed satellite images output by acolite processor (one for each band)
-                    image_engineer.combine_bands()
-
-                    # merges sentinel 2 tiles into one large image covering whole region of interest
-                    # please note, this could be made more efficient by patching each tile, then merging the tiles.
-                    # However, care must be taken not to lose pixels due to cropping.
-                    # if using 1 or 2 sentinel tiles, it does not make much difference
-                    image_engineer.merge_tiles(directory=os.path.join(base_path, "data", "unmerged_geotiffs"), mode="images")
-
-                    geotiff = os.path.join(base_path, "data", "merged_geotiffs",  tile_id + "_" + date + ".tif")
-                    # patch full ROI for predictions
-                    image_engineer.patch_image(geotiff)
-
-                    # make predictions on image patches
-                    create_image_prediction()
-
-                    # merge predicted masks into one file
-                    image_engineer.merge_tiles(directory=os.path.join(base_path, "data", "predicted_patches"), mode="probs")
-
-                    # run f-mask on each sentinel SAFE file
-                    run_fmask(os.path.join(base_path, "data", "unprocessed"))
-
-                    # merge f-masks into one large mask
-                    image_engineer.merge_tiles(directory=os.path.join(base_path, "data", "merged_geotiffs"), mode="clouds")
-
-                    # set threshold (only pixels that the model predicts as having >99% chance of being plastic are classified as plastic
-                    threshold = 0.99
-
-                    # apply threshold
-                    apply_threshold(os.path.join(base_path, "data", "merged_geotiffs"), threshold)
-
-                    # read coords for f-mask crop
-                    poly = read_geojson(os.path.join(base_path, "poly.geojson"))
-
-                    # crop f-mask for ROI
-                    crop_f_mask(tile_id, date, poly, image_engineer.crs)
-
-                    # apply f-mask to predictions, generate and apply land-mask
-                    mask_prediction(id=image_engineer.id, date=image_engineer.date, land_mask=image_engineer.land_mask, cloud_mask=image_engineer.cloud_mask)
-
-                    # get plastic coordinates and save to csv
-                    #save_coordinates_to_csv(os.path.join(base_path, "data", "merged_geotiffs"), "prediction_masked")
-
-                    # plot single date coordinates - Currently broken, plot data by specifying the output data_path in analysis.py
-                    # plot_data_single_day(date)
-
-                    # clean data dirs for next iteration, save predictions and tif to output files dir
-                    breakdown_directories(date)
-                    # if any data to process, run pipeline
-            if large_area:
-                if bundles:
-                    for product in bundles:
+            if bundles:
+                for product in bundles:
+                    try:
                         shutil.copytree(os.path.join(base_path, "data", "downloads", product), os.path.join(base_path, "data", "unprocessed", product))
                         # set tile_id and date
                         tile_id = product.split("_")[-2]
@@ -356,8 +287,7 @@ if __name__ == "__main__":
                         # run f-mask on each sentinel SAFE file
                         run_fmask(os.path.join(base_path, "data", "unprocessed"))
 
-                        # APPLY LAND MASKING PRIOR TO PREDICTIONS to remove from analysis and speed up processing....
-                        # *********************************************************************
+                        # TODO - APPLY LAND MASKING PRIOR TO PREDICTIONS to remove from analysis and speed up processing....
                         # verifies the scene does not contain excessive masking
                         fmask_files = get_files(os.path.join(base_path, "data", "merged_geotiffs"), "cloud")
                         fmask_percentage = None
@@ -368,7 +298,9 @@ if __name__ == "__main__":
 
                         if fmask_percentage < fmask_threshold:
                             print(f"Low cloud detected ({fmask_percentage}%). Processing scene...")
-                            run_acolite(product)
+                            if __name__ == '__main__':
+                                with Pool(len(bundles)) as p:
+                                    print(p.map(run_acolite, [product]))
                             print("processing files........")
                             image_engineer = ImageEngineer(id=tile_id, date=date, land_mask=args.land_mask, cloud_mask=args.cloud_mask)
 
@@ -404,9 +336,6 @@ if __name__ == "__main__":
                             image_engineer.merge_tiles(directory=os.path.join(base_path, "data", "merged_geotiffs"),
                                                        mode="clouds")
 
-                            # set threshold (only pixels that the model predicts as having >99% chance of being plastic are classified as plastic
-                            threshold = 0.99
-
                             # apply threshold
                             apply_threshold(os.path.join(base_path, "data", "merged_geotiffs"), threshold)
 
@@ -421,7 +350,7 @@ if __name__ == "__main__":
                                             land_mask=image_engineer.land_mask, cloud_mask=image_engineer.cloud_mask)
 
                             # get plastic coordinates and save to csv
-                            save_coordinates_to_csv2(os.path.join(base_path, "data", "merged_geotiffs"), "prediction_masked")
+                            save_coordinates_to_csv(os.path.join(base_path, "data", "merged_geotiffs"), "prediction_masked")
 
                             # plot single date coordinates - Currently broken, plot data by specifying the output data_path in analysis.py
                             # plot_data_single_day(date)
@@ -431,10 +360,10 @@ if __name__ == "__main__":
                         breakdown_directories(date)
                         if os.path.exists(os.path.join(base_path, "data", "processed")):
                             shutil.rmtree(os.path.join(base_path, "data", "processed"))
+                    except Exception as e:
+                        print(f"Error processing data for {date}-{tile_id}: {e}")
 
-            # plot all plastic detections
-            # get df and plot
-            clear_downloads()
+        clear_downloads()
 
     if args.command == "download":
         date = args.date[0]
