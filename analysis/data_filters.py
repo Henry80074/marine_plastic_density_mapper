@@ -30,7 +30,6 @@ def get_fmask_percentage(file):
             return 100
 
 
-
 def mean_pixel_value_filter(df):
     MPM = df.vals.values.tolist()
     q1 = np.quantile(MPM, 0.25)

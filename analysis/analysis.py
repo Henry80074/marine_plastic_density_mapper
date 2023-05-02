@@ -1,3 +1,5 @@
+
+from rasterio.merge import merge
 import rasterio
 import numpy as np
 import os
@@ -88,31 +90,22 @@ def plot_probabilities(tag, data_path, threshold):
         fig.show()
 
 
-def save_coordinates_to_csv(data_path, tag):
-    all_point_data = []
-    for file in sorted(get_files(data_path, tag)):
-        date = os.path.basename(file).split("_")[1]
-        all_point_data.extend(generate_plastic_coordinates(file, date, land_blurring=land_blur))
-    df = pd.DataFrame(all_point_data, columns=['latitude', 'longitude', 'date'])
-    if os.path.exists(os.path.join(data_path, "plastic_coordinates.csv")):
-        df.to_csv(os.path.join(data_path, "plastic_coordinates.csv"), mode="a", header=False)
-    else:
-        df.to_csv(os.path.join(data_path, "plastic_coordinates.csv"), mode="w", header=True)
-
-
-def save_coordinates_to_csv2(tiff_path, tag):
+def save_coordinates_to_csv(tiff_path, tag):
     all_point_data = []
     for file in sorted(get_files(tiff_path, tag)):
         date = os.path.basename(file).split("_")[1]
         tile = os.path.basename(file).split("_")[1]
         all_point_data.extend(generate_plastic_coordinates2(file, date, tile))
     df = pd.DataFrame(all_point_data, columns=['latitude', 'longitude', 'date', 'tile_id', 'plastic_percentage', 'mask_percentage'])
+    df = df.drop_duplicates()
+
     if os.path.exists(os.path.join(base_path, "data", "outputs", "plastic_coordinates.csv")):
         df.to_csv(os.path.join(base_path, "data", "outputs", "plastic_coordinates.csv"), mode="a", header=False)
     else:
         df.to_csv(os.path.join(base_path, "data", "outputs", "plastic_coordinates.csv"), mode="w", header=True)
 
 
+# plots
 def plot_data_single_day(date):
     df = pd.read_csv(os.path.join(base_path, "data", "outputs", "plastic_coordinates.csv"))
     if not df.empty:
@@ -146,6 +139,7 @@ def plot_data_from_csv(csv_path):
     fig.show()
 
 
+# code related to calculating MDM metric values
 def get_pixel_mean_values(probabilities_tag, data_path, fname, filtered_df):
     '''
     calculating mdm values for each pixels and returning detected MD&SP pixels in a csv file with their corresponding MDM values
@@ -225,6 +219,7 @@ def get_pixel_mean_values(probabilities_tag, data_path, fname, filtered_df):
     return df4
 
 
+# code related to MDM metric visualisation
 def plot_mean_pixel_val_map(file):
     df3 = pd.read_csv(file)
     c1 = [np.abs(df3.latitude.mean()), np.abs(df3.longitude.max())]
@@ -253,42 +248,56 @@ def plot_mean_pixel_val_map(file):
         fig.show()
 
 
-def get_data(data_path, prediction_tag, bathymetry_file):
+# applies various filters to reduce false positives
+def filter_data(data_path, prediction_tag, bathymetry=True, MDM=True, ports=True):
+
+    # TODO [WIP]
+    # if bathymetry:
+    #     src_files_to_mosaic = []
+    #     dir = os.path.join(base_path, "utils", "bathymetry_maps", "gebco_2023_tid_geotiff")
+    #     tiff_files = [x for x in os.listdir(dir) if x.endswith(".tif")]
+    #     for fp in tiff_files:
+    #         src = rasterio.open(os.path.join(dir, fp))
+    #         src_files_to_mosaic.append(src)
+    #     out_meta = src.meta.copy()
+    #     mosaic, out_trans = merge(src_files_to_mosaic)
+    #
+    #     out_meta.update({"driver": "GTiff",
+    #                      "height": mosaic.shape[1],
+    #                      "width": mosaic.shape[2],
+    #                      "transform": out_trans,
+    #                      "crs": "EPSG:4326"})
+    #
+    #     with rasterio.open(os.path.join(base_path, "utils", "bathymetry_maps", "merged_bath_map.tiff"), "w", **out_meta) as dest:
+    #         dest.write(mosaic)
+
     fname = os.path.basename(data_path)
+
+    # TODO - remove need for data path and prediction_tag for calulating scene plastic percentages
+    #  this has now been refactored and is calculated during pipeline runs so should be obtained from plastic_coordinates.csv
+    # filters pixels if based on excessive plastic detections, excessive masking or too close to land
     df = class_percentages_filter(data_path, prediction_tag, max_plastic_percent=max_plastic_percentage, max_masking_percent=max_masking_percentage, land_blurring=land_blur)
-    if not df.empty:
-        df = bathymetry_filter(df, min_depth=min_depth, file=bathymetry_file)
-    if not df.empty:
+
+    # TODO implement bathymetery filter
+    # filter pixels in too shallow water (1km resolution)
+    # if not df.empty and bathymetry:
+    #     df = bathymetry_filter(df, min_depth=min_depth, file=bathymetry_file)
+
+    # filter pixels with two high MDM (static detections may be caused by other land or ocean features)
+    if not df.empty and MDM:
         df = get_pixel_mean_values("probabilities_masked", data_path, fname, df)
-    if not df.empty:
+    if not df.empty and MDM:
         df = mean_pixel_value_filter(df)
-    if not df.empty:
+    # filter pixels close to ports and anchorages (ships and other vessels are sometimes misclassified)
+    if not df.empty and ports:
         df = port_mask(df, port_mask_distance)
     plot_data(df)
+    df.to_csv(os.path.join(base_path, "data", "outputs", "plastic_coordinates_filtered.csv", index=False))
     return df
-
 
 
 if __name__ == "__main__":
     print("Analysing MAP-Mapper outputs and plotting plastic detections...")
-    #save_coordinates_to_csv2(os.path.join(base_path, "data", "outputs"), 'prediction_masked')
-    plot_data_from_csv("/home/henry/PycharmProjects/plastic_pipeline_conda/data/outputs/plastic_coordinates.csv")
-   #  data_path = os.path.join(base_path, "data", "outputs")
-   #  # data_path ="/home/henry/Desktop/mumbai"
-   #  # data_path = "/home/henry/Downloads/argentina"
-   # # data_path = "/home/henry/Desktop/dissertation_data/cornwall/historic_files"
-   #
-   #  df = get_data(data_path, "prediction_masked", "/home/henry/PycharmProjects/plastic_pipeline_conda/utils/bathymetry_maps/manila.tif")
-   #  df.to_csv("manila_port_filtered4.csv", index=False)
-   #  plot_data(df)
-   #  file = os.path.join(base_path, "analysis", "manila_port_filtered.csv")
-   # # file = os.path.join(base_path, "data", "outputs", "cornwall_gmaps_heatmap.csv")
-   #  plot_data(pd.read_csv(file))
-    #plot_mean_pixel_val_map(file)
+    df = filter_data(os.path.join(base_path, "data", "outputs", "prediction_masked"), bathymetry=True, MDM=True, ports=True)
+    plot_data_from_csv(os.path.join(base_path, "data", "outputs", "plastic_coordinates_filtered.csv"))
 
-    # if os.path.exists(file):  # if you run the code once, it will create the csv file and after that everytime you run this code it plots those calculated results. If you change something and need a new plot, please delete the csv file and run afterwrds.
-    #     plot_mean_pixel_val_map(file)
-    # else:
-    #     df = get_data(data_path, "prediction_masked",
-    #                   "/home/henry/PycharmProjects/plastic_pipeline_conda/utils/bathymetry_maps/argentina.tif")
-    #     plot_mean_pixel_val_map(file)
