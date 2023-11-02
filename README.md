@@ -44,6 +44,7 @@ Then run the commands: <br> <br>
 &emsp; pip install /home/<user>/Downloads/GDAL-3.4.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl <br>
 &emsp; pip install gdal-utils <br>
 
+You will need to download the model.pth and place it in the trained_models folder. This model can be downloaded from here: https://drive.google.com/file/d/1JKLJAZIdFe-wu2PhDVocBH54v-VFu-Rb/view?usp=drive_link <br>
 Finally, you must specify where the proj.db file is. If using anaconda this is likely to be in the share folder of the MAP-Mapper environment. <br>
 Navigate to run.py and change the environment variable to match this path. <br><br>
 For example: <br>
