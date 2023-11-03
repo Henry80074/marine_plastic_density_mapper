@@ -298,6 +298,5 @@ def filter_data(data_path, prediction_tag, bathymetry=True, MDM=True, ports=True
 
 if __name__ == "__main__":
     print("Analysing MAP-Mapper outputs and plotting plastic detections...")
-    df = filter_data(os.path.join(base_path, "data", "outputs", "prediction_masked"), bathymetry=True, MDM=True, ports=True)
-    plot_data_from_csv(os.path.join(base_path, "data", "outputs", "plastic_coordinates_filtered.csv"))
+    plot_data_from_csv(os.path.join(base_path, "data", "outputs", "plastic_coordinates.csv"))
 

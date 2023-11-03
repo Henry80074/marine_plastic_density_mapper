@@ -3,7 +3,8 @@ from flask import Flask
 import os
 
 app = Flask(__name__)
-app.config.from_object("deployment.config.Config")
+#app.config.from_object("deployment.config.Config")
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///example.db'
 db = SQLAlchemy(app)
 
 
@@ -15,5 +16,4 @@ class Detections(db.Model):
     longitude = db.Column(db.Numeric(precision=8))
     latitude = db.Column(db.Numeric(precision=8))
 
-
-from deployment import routes
+from . import routes

@@ -356,12 +356,14 @@ if __name__ == "__main__":
                             # plot_data_single_day(date)
                         else:
                             print(f"Excessive cloud detected ({fmask_percentage}%). Skipping scene...")
-                        # clean data dirs for next iteration, save predictions and tif to output files dir
-                        breakdown_directories(date)
-                        if os.path.exists(os.path.join(base_path, "data", "processed")):
-                            shutil.rmtree(os.path.join(base_path, "data", "processed"))
+
                     except Exception as e:
                         print(f"Error processing data for {date}-{tile_id}: {e}")
+
+                    # clean data dirs for next iteration, save predictions and tif to output files dir
+                    breakdown_directories(date)
+                    if os.path.exists(os.path.join(base_path, "data", "processed")):
+                        shutil.rmtree(os.path.join(base_path, "data", "processed"))
 
         clear_downloads()
 

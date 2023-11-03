@@ -4,7 +4,7 @@ import json
 import plotly
 import os
 import plotly.figure_factory as ff
-from deployment import app
+from . import app
 #from data import fetch
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,21 +22,21 @@ land_blur = 0.008999*close_to_land_mask
 max_masking_percentage = 80
 min_depth = 5
 port_mask_distance = 2500
-csv_path = ''
+csv_path = '/home/henry/PycharmProjects/plastic_pipeline_conda/data/outputs/plastic_coordinates.csv'
 
 @app.route('/', methods=['GET'])
 def dashboard():
     #df = fetch()
     df = pd.read_csv(csv_path)
     fig = ff.create_hexbin_mapbox(
-        title="Plastic Detections for ",
+        title="Plastic Detections",
         data_frame=df, lat="latitude", lon="longitude",
         nx_hexagon=hex_bin_number, opacity=hex_bin_opacity, labels={"color": "Point Count"},
         show_original_data=True,
         original_data_marker=dict(size=data_marker_size, opacity=data_marker_opacity, color="deeppink"),
         color_continuous_scale="Reds", min_count=min_detection_count,
     )
-    fig.update_layout(mapbox_style="open-street-map", margin=dict(b=0, t=40, l=0, r=0))
+    fig.update_layout(mapbox_style="open-street-map", margin=dict(b=80, t=40, l=0, r=0))
  
     graph_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     return render_template("map.html", graph_json=graph_json,)
